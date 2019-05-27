@@ -1,6 +1,8 @@
 set -eux
 
 export FLAGS_sync_nccl_allreduce=1
+export FLAGS_fraction_of_gpu_memory_to_use=1
+export FLAG_eager_delete_tensor_gb=1.0
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 
 python -u run_classifier.py \
@@ -10,12 +12,10 @@ python -u run_classifier.py \
                    --do_val true \
                    --do_test true \
                    --batch_size 8 \
-                   --init_pretraining_params ${MODEL_PATH}/params \
                    --train_set ${TASK_DATA_PATH}/nlpcc-dbqa/train.tsv \
                    --dev_set ${TASK_DATA_PATH}/nlpcc-dbqa/dev.tsv \
                    --test_set ${TASK_DATA_PATH}/nlpcc-dbqa/test.tsv \
                    --vocab_path config/vocab.txt \
-                   --ernie_config_path config/ernie_config.json \
                    --checkpoints "./checkpoints" \
                    --save_steps 1000 \
                    --weight_decay  0.01 \

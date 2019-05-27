@@ -24,20 +24,75 @@ import multiprocessing
 import paddle.fluid as fluid
 
 import reader.task_reader as task_reader
-from model.ernie import ErnieConfig
-from finetune.classifier import create_model, evaluate
+from finetune.classifier import ernie_pyreader, evaluate
 from optimization import optimization
 from utils.args import print_arguments
 from utils.init import init_pretraining_params, init_checkpoint
 from finetune_args import parser
+import paddlehub as hub
 
 args = parser.parse_args()
 
+def create_model(args, pyreader_name, is_prediction=False):
+    pyreader, ernie_inputs, labels = ernie_pyreader(pyreader_name, args.max_seq_len)
+    module = hub.Module(name="ernie")
+    inputs, outputs, program = module.context(trainable="True", max_seq_len=args.max_seq_len)
+    input_dict = {
+        inputs["input_ids"].name: ernie_inputs["src_ids"],
+        inputs["position_ids"].name: ernie_inputs["pos_ids"],
+        inputs["segment_ids"].name: ernie_inputs["sent_ids"],
+        inputs["input_mask"].name: ernie_inputs["input_mask"],
+    }
+    hub.connect_program(
+        pre_program=fluid.default_main_program(),
+        next_program=program,
+        input_dict=input_dict)
+
+    cls_feats = fluid.layers.dropout(
+        x=outputs["pooled_output"],
+        dropout_prob=0.1,
+        dropout_implementation="upscale_in_train")
+    logits = fluid.layers.fc(
+        input=cls_feats,
+        size=args.num_labels,
+        param_attr=fluid.ParamAttr(
+            name="cls_out_w",
+            initializer=fluid.initializer.TruncatedNormal(scale=0.02)),
+        bias_attr=fluid.ParamAttr(
+            name="cls_out_b", initializer=fluid.initializer.Constant(0.)))
+
+    if is_prediction:
+        probs = fluid.layers.softmax(logits)
+        feed_targets_name = [
+            src_ids.name, pos_ids.name, sent_ids.name, input_mask.name
+        ]
+        return pyreader, probs, feed_targets_name
+
+    ce_loss, probs = fluid.layers.softmax_with_cross_entropy(
+        logits=logits, label=labels, return_softmax=True)
+    loss = fluid.layers.mean(x=ce_loss)
+
+    if args.use_fp16 and args.loss_scaling > 1.0:
+        loss *= args.loss_scaling
+
+    num_seqs = fluid.layers.create_tensor(dtype='int64')
+    accuracy = fluid.layers.accuracy(input=probs, label=labels, total=num_seqs)
+
+    graph_vars = {
+        "loss": loss,
+        "probs": probs,
+        "accuracy": accuracy,
+        "labels": labels,
+        "num_seqs": num_seqs,
+        "qids": ernie_inputs["qids"]
+    }
+    for k, v in graph_vars.items():
+        v.persistable = True
+
+    return pyreader, graph_vars
+
 
 def main(args):
-    ernie_config = ErnieConfig(args.ernie_config_path)
-    ernie_config.print_config()
-
     if args.use_cuda:
         place = fluid.CUDAPlace(int(os.getenv('FLAGS_selected_gpus', '0')))
         dev_count = fluid.core.get_cuda_device_count()
@@ -89,9 +144,7 @@ def main(args):
         with fluid.program_guard(train_program, startup_prog):
             with fluid.unique_name.guard():
                 train_pyreader, graph_vars = create_model(
-                    args,
-                    pyreader_name='train_reader',
-                    ernie_config=ernie_config)
+                    args, pyreader_name='train_reader')
                 scheduled_lr = optimization(
                     loss=graph_vars["loss"],
                     warmup_steps=warmup_steps,
@@ -129,40 +182,11 @@ def main(args):
         with fluid.program_guard(test_prog, startup_prog):
             with fluid.unique_name.guard():
                 test_pyreader, graph_vars = create_model(
-                    args,
-                    pyreader_name='test_reader',
-                    ernie_config=ernie_config)
+                    args, pyreader_name='test_reader')
 
         test_prog = test_prog.clone(for_test=True)
 
     exe.run(startup_prog)
-
-    if args.do_train:
-        if args.init_checkpoint and args.init_pretraining_params:
-            print(
-                "WARNING: args 'init_checkpoint' and 'init_pretraining_params' "
-                "both are set! Only arg 'init_checkpoint' is made valid.")
-        if args.init_checkpoint:
-            init_checkpoint(
-                exe,
-                args.init_checkpoint,
-                main_program=startup_prog,
-                use_fp16=args.use_fp16)
-        elif args.init_pretraining_params:
-            init_pretraining_params(
-                exe,
-                args.init_pretraining_params,
-                main_program=startup_prog,
-                use_fp16=args.use_fp16)
-    elif args.do_val or args.do_test:
-        if not args.init_checkpoint:
-            raise ValueError("args 'init_checkpoint' should be set if"
-                             "only doing validation or testing!")
-        init_checkpoint(
-            exe,
-            args.init_checkpoint,
-            main_program=startup_prog,
-            use_fp16=args.use_fp16)
 
     if args.do_train:
         exec_strategy = fluid.ExecutionStrategy()
@@ -272,5 +296,4 @@ def main(args):
 
 if __name__ == '__main__':
     print_arguments(args)
-
     main(args)

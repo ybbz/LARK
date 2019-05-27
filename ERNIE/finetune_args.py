@@ -25,11 +25,6 @@ from utils.args import ArgumentGroup
 # yapf: disable
 parser = argparse.ArgumentParser(__doc__)
 model_g = ArgumentGroup(parser, "model", "model configuration and paths.")
-model_g.add_arg("ernie_config_path",         str,  None,           "Path to the json file for ernie model config.")
-model_g.add_arg("init_checkpoint",          str,  None,           "Init checkpoint to resume training from.")
-model_g.add_arg("init_pretraining_params",  str,  None,
-                "Init pre-training params which preforms fine-tuning from. If the "
-                 "arg 'init_checkpoint' has been set, this argument wouldn't be valid.")
 model_g.add_arg("checkpoints",              str,  "checkpoints",  "Path to save checkpoints.")
 
 train_g = ArgumentGroup(parser, "training", "training options.")

@@ -1,6 +1,8 @@
 set -eux
 
 export FLAGS_sync_nccl_allreduce=1
+export FLAGS_fraction_of_gpu_memory_to_use=1
+export FLAG_eager_delete_tensor_gb=1.0
 export CUDA_VISIBLE_DEVICES=0
 
 python -u run_sequence_labeling.py \
@@ -9,14 +11,12 @@ python -u run_sequence_labeling.py \
                    --do_val true \
                    --do_test true \
                    --batch_size 16 \
-                   --init_pretraining_params ${MODEL_PATH}/params \
                    --num_labels 7 \
                    --label_map_config ${TASK_DATA_PATH}/msra_ner/label_map.json \
                    --train_set ${TASK_DATA_PATH}/msra_ner/train.tsv \
                    --dev_set ${TASK_DATA_PATH}/msra_ner/dev.tsv \
                    --test_set ${TASK_DATA_PATH}/msra_ner/test.tsv \
                    --vocab_path config/vocab.txt \
-                   --ernie_config_path config/ernie_config.json \
                    --checkpoints ./checkpoints \
                    --save_steps 100000 \
                    --weight_decay  0.01 \
