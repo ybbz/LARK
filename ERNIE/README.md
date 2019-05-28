@@ -1,7 +1,7 @@
 ## ERNIE: **E**nhanced **R**epresentation through k**N**owledge **I**nt**E**gration
 
 ### 介绍
-当前分支通过PadddleHub调用ERNIE预训练模型，在各种NLP任务上进行Fine-tuning。ERNIE的详细介绍见[develop分支](https://github.com/PaddlePaddle/LARK/tree/develop/ERNIE)。
+当前分支通过PaddleHub调用ERNIE预训练模型，在各种NLP任务上进行Fine-tuning。ERNIE的详细介绍见[develop分支](https://github.com/PaddlePaddle/LARK/tree/develop/ERNIE)。
 
 ### 安装
 本项目依赖于 Paddle Fluid 1.4.1(参考[安装指南](http://www.paddlepaddle.org/#quick-start))和PaddleHub([项目地址](https://github.com/PaddlePaddle/PaddleHub))。
