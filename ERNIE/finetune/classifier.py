@@ -95,7 +95,9 @@ def evaluate_map(preds):
     return total_map / qnum
 
 
-def evaluate(exe, test_program, test_pyreader, graph_vars, eval_phase):
+def evaluate(exe, test_program, test_pyreader, graph_vars, 
+        eval_phase, tag_num=2, dev_count=1):
+
     train_fetch_list = [
         graph_vars["loss"].name, graph_vars["accuracy"].name,
         graph_vars["num_seqs"].name

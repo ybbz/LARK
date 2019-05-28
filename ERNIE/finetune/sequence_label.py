@@ -153,13 +153,8 @@ def calculate_f1(num_label, num_infer, num_correct):
     return precision, recall, f1
 
 
-def evaluate(exe,
-             program,
-             pyreader,
-             graph_vars,
-             tag_num,
-             eval_phase,
-             dev_count=1):
+def evaluate(exe, program,pyreader, graph_vars,
+        eval_phase, tag_num=2, dev_count=1):
     fetch_list = [
         graph_vars["labels"].name, graph_vars["infers"].name,
         graph_vars["seq_lens"].name
