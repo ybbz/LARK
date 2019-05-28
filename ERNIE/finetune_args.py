@@ -60,6 +60,8 @@ data_g.add_arg("do_lower_case",       bool, True,
 data_g.add_arg("random_seed",         int,  0,     "Random seed.")
 data_g.add_arg("label_map_config",    str,  None,  "label_map_path.")
 data_g.add_arg("num_labels",          int,  2,     "label number")
+data_g.add_arg("output_dir",          str,  "embeddings", "path to save embeddings extracted by ernie_encoder.")
+data_g.add_arg("data_set",            str,  None,  "Path to data for calculating ernie_embeddings.")
 
 run_type_g = ArgumentGroup(parser, "run_type", "running type options.")
 run_type_g.add_arg("use_cuda",                     bool,   True,  "If set, use GPU for training.")

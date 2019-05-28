@@ -1,11 +1,12 @@
 ## ERNIE: **E**nhanced **R**epresentation through k**N**owledge **I**nt**E**gration
 
+### 安装
+本项目依赖于 Paddle Fluid 1.4.1(参考[安装指南](http://www.paddlepaddle.org/#quick-start))和PaddleHub(pip install paddlehub)
 
 ### Fine-tuning 任务
+[示例任务数据下载](https://ernie.bj.bcebos.com/task_data.tgz)
 
-在完成 ERNIE 模型的预训练后，即可利用预训练参数在特定的 NLP 任务上做 Fine-tuning。以下基于 ERNIE 的预训练模型，示例如何进行分类任务和序列标注任务的 Fine-tuning，如果要运行这些任务，请通过 [模型&数据](#模型-数据) 一节提供的链接预先下载好对应的预训练模型。
-
-将下载的模型解压到 `${MODEL_PATH}` 路径下，`${MODEL_PATH}` 路径下包含模型参数目录 `params`;
+在完成 ERNIE 模型的预训练后，即可利用预训练参数在特定的 NLP 任务上做 Fine-tuning。以下基于 ERNIE 的预训练模型，示例如何进行分类任务和序列标注任务的 Fine-tuning。
 
 将下载的任务数据解压到 `${TASK_DATA_PATH}` 路径下，`${TASK_DATA_PATH}` 路径包含 `LCQMC`、`XNLI`、`MSRA-NER`、`ChnSentCorp`、 `nlpcc-dbqa` 5个任务的训练数据和测试数据；
 
@@ -20,8 +21,38 @@ label  text_a
 0   XP的驱动不好找！我的17号提的货，现在就降价了100元，而且还送杀毒软件！
 1   <荐书> 推荐所有喜欢<红楼>的红迷们一定要收藏这本书,要知道当年我听说这本书的时候花很长时间去图书馆找和借都没能如愿,所以这次一看到当当有,马上买了,红迷们也要记得备货哦!
  ```
+配置相关参数和数据地址并运行run_classifier.py:
+```shell
+export FLAGS_sync_nccl_allreduce=1
+export FLAGS_fraction_of_gpu_memory_to_use=1
+export FLAG_eager_delete_tensor_gb=1.0
+export CUDA_VISIBLE_DEVICES=0
 
-执行 `bash script/run_ChnSentiCorp.sh` 即可开始finetune，执行结束后会输出如下所示的在验证集和测试集上的测试结果:
+python -u run_classifier.py \
+                   --use_cuda true \
+                   --verbose true \
+                   --do_train true \
+                   --do_val true \
+                   --do_test true \
+                   --batch_size 24 \
+                   --train_set ${TASK_DATA_PATH}/chnsenticorp/train.tsv \
+                   --dev_set ${TASK_DATA_PATH}/chnsenticorp/dev.tsv \
+                   --test_set ${TASK_DATA_PATH}/chnsenticorp/test.tsv \
+                   --vocab_path config/vocab.txt \
+                   --checkpoints ./checkpoints \
+                   --save_steps 1000 \
+                   --weight_decay  0.01 \
+                   --warmup_proportion 0.0 \
+                   --validation_steps 100 \
+                   --epoch 10 \
+                   --max_seq_len 256 \
+                   --learning_rate 5e-5 \
+                   --skip_steps 10 \
+                   --num_iteration_per_drop_scope 1 \
+                   --num_labels 2 \
+                   --random_seed 1
+```
+运行结束后会输出如下所示的在验证集和测试集上的测试结果:
 
 ```
 [dev evaluation] ave loss: 0.189373, ave acc: 0.954167, data_num: 1200, elapsed time: 14.984404 s
@@ -37,7 +68,40 @@ text_a  text_b  label
 谁知道她是网络美女吗？  爱情这杯酒谁喝都会醉是什么歌    0
 这腰带是什么牌子    护腰带什么牌子好    0
 ```
-执行 `bash script/run_lcqmc.sh` 即可开始finetune，执行结束后会输出如下所示的在验证集和测试集上的测试结果:
+配置相关参数和数据地址并运行run_classifier.py:
+```shell
+export FLAGS_sync_nccl_allreduce=1
+export FLAGS_fraction_of_gpu_memory_to_use=1
+export FLAG_eager_delete_tensor_gb=1.0
+export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
+
+python -u run_classifier.py \
+                   --use_cuda true \
+                   --do_train true \
+                   --do_val true \
+                   --do_test true \
+                   --verbose true \
+                   --batch_size 8192 \
+                   --in_tokens true \
+                   --train_set ${TASK_DATA_PATH}/xnli/train.tsv \
+                   --dev_set ${TASK_DATA_PATH}/xnli/dev.tsv \
+                   --test_set ${TASK_DATA_PATH}/xnli/test.tsv \
+                   --vocab_path config/vocab.txt \
+                   --label_map ${TASK_DATA_PATH}/xnli/label_map.json \
+                   --checkpoints ./checkpoints \
+                   --save_steps 1000 \
+                   --weight_decay  0.01 \
+                   --warmup_proportion 0.0 \
+                   --validation_steps 25 \
+                   --epoch 3 \
+                   --max_seq_len 512 \
+                   --learning_rate 1e-4 \
+                   --skip_steps 10 \
+                   --num_iteration_per_drop_scope 1 \
+                   --num_labels 3 \
+                   --random_seed 1
+```
+运行结束后会输出如下所示的在验证集和测试集上的测试结果:
 
 ```
 [dev evaluation] ave loss: 0.290925, ave acc: 0.900704, data_num: 8802, elapsed time: 32.240948 s
@@ -55,8 +119,38 @@ text_a  text_b  label
 相 比 之 下 ， 青 岛 海 牛 队 和 广 州 松 日 队 的 雨 中 之 战 虽 然 也 是 0 ∶ 0 ， 但 乏 善 可 陈 。   O O O O O B-ORG I-ORG I-ORG I-ORG I-ORG O B-ORG I-ORG I-ORG I-ORG I-ORG O O O O O O O O O O O O O O O O O O O
 理 由 多 多 ， 最 无 奈 的 却 是 ： 5 月 恰 逢 双 重 考 试 ， 她 攻 读 的 博 士 学 位 论 文 要 通 考 ； 她 任 教 的 两 所 学 校 ， 也 要 在 这 段 时 日 大 考 。    O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O
  ```
+配置相关参数和数据地址并运行run_sequence_labeling.py:
+```shell
+export FLAGS_sync_nccl_allreduce=1
+export FLAGS_fraction_of_gpu_memory_to_use=1
+export FLAG_eager_delete_tensor_gb=1.0
+export CUDA_VISIBLE_DEVICES=0
 
-执行 `bash script/run_msra_ner.sh` 即可开始 finetune，执行结束后会输出如下所示的在验证集和测试集上的测试结果:
+python -u run_sequence_labeling.py \
+                   --use_cuda true \
+                   --do_train true \
+                   --do_val true \
+                   --do_test true \
+                   --batch_size 16 \
+                   --num_labels 7 \
+                   --label_map_config ${TASK_DATA_PATH}/msra_ner/label_map.json \
+                   --train_set ${TASK_DATA_PATH}/msra_ner/train.tsv \
+                   --dev_set ${TASK_DATA_PATH}/msra_ner/dev.tsv \
+                   --test_set ${TASK_DATA_PATH}/msra_ner/test.tsv \
+                   --vocab_path config/vocab.txt \
+                   --checkpoints ./checkpoints \
+                   --save_steps 100000 \
+                   --weight_decay  0.01 \
+                   --warmup_proportion 0.0 \
+                   --validation_steps 100 \
+                   --epoch 3 \
+                   --max_seq_len 256 \
+                   --learning_rate 5e-5 \
+                   --skip_steps 10 \
+                   --num_iteration_per_drop_scope 1 \
+                   --random_seed 1
+```
+运行结束后会输出如下所示的在验证集和测试集上的测试结果:
 
 ```
 [dev evaluation] f1: 0.951949, precision: 0.944636, recall: 0.959376, elapsed time: 19.156693 s
@@ -69,7 +163,7 @@ text_a  text_b  label
 
 可以通过 ernie_encoder.py 抽取出输入句子的 Embedding 表示和句子中每个 token 的 Embedding 表示，数据格式和 [Fine-tuning 任务](#Fine-tuning-任务) 一节中介绍的各种类型 Fine-tuning 任务的训练数据格式一致；以获取 LCQM dev 数据集中的句子 Embedding 和 token embedding 为例，示例脚本如下:
 
-```
+```shell
 export FLAGS_sync_nccl_allreduce=1
 export CUDA_VISIBLE_DEVICES=7
 
@@ -77,11 +171,9 @@ python -u ernir_encoder.py \
                    --use_cuda true \
                    --batch_size 32 \
                    --output_dir "./test" \
-                   --init_pretraining_params ${MODEL_PATH}/params \
                    --data_set ${TASK_DATA_PATH}/lcqmc/dev.tsv \
                    --vocab_path config/vocab.txt \
-                   --max_seq_len 128 \
-                   --ernie_config_path config/ernie_config.json
+                   --max_seq_len 128
 ```
 
 上述脚本运行结束后，会在当前路径的 test 目录下分别生成 `cls_emb.npy` 文件存储句子 embeddings 和 `top_layer_emb.npy` 文件存储 token embeddings; 实际使用时，参照示例脚本修改数据路径、embeddings 文件存储路径等配置即可运行；
