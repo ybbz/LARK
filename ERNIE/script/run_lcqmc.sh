@@ -3,8 +3,11 @@ set -eux
 export FLAGS_sync_nccl_allreduce=1
 export CUDA_VISIBLE_DEVICES=0
 
+MODEL_PATH='./download/models'
+TASK_DATA_PATH='./download/task_data'
+
 python -u run_classifier.py \
-                   --use_cuda true \
+                   --use_cuda false \
                    --verbose true \
                    --do_train true \
                    --do_val true \
@@ -20,7 +23,7 @@ python -u run_classifier.py \
                    --weight_decay  0.0 \
                    --warmup_proportion 0.0 \
                    --validation_steps 100 \
-                   --epoch 3 \
+                   --epoch 1 \
                    --max_seq_len 128 \
                    --ernie_config_path config/ernie_config.json \
                    --learning_rate 2e-5 \
